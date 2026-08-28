@@ -4,6 +4,7 @@ sqlalchemy>=2.0
 pypdf>=5.0
 pdfplumber>=0.11
 pdf2image>=1.17
+pypdfium2>=4.30
 pytesseract>=0.3.13
 pandas>=2.2
 numpy>=2.0
