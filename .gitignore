@@ -1,0 +1,12 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+database/*.db
+database/chroma/
+output/*.csv
+output/*.json
+output/*.log
+output/graficos/*.png

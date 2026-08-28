@@ -1,0 +1,34 @@
+{
+  "categorias_oficiais": [
+    {
+      "nome": "Acesso e senha",
+      "variacoes": ["acesso", "senha", "Login", "problema de senha", "ACESSO E SENHA"]
+    },
+    {
+      "nome": "Instalacao de software",
+      "variacoes": ["instalacao", "Instalação", "instalar programa", "software", "INSTALACAO"]
+    },
+    {
+      "nome": "Python e bibliotecas",
+      "variacoes": ["python", "PYTHON", "biblioteca", "pip", "pacotes python"]
+    },
+    {
+      "nome": "Ambiente virtual",
+      "variacoes": ["venv", "ambiente virtual", "VENV", "virtual env"]
+    },
+    {
+      "nome": "VSCode e ferramentas",
+      "variacoes": ["vscode", "VS Code", "editor", "extensao vscode"]
+    },
+    {
+      "nome": "Atividades e arquivos",
+      "variacoes": ["atividade", "arquivo", "entrega", "JSON/CSV"]
+    },
+    {
+      "nome": "Conectividade",
+      "variacoes": ["internet", "conexao", "rede", "acesso remoto"]
+    }
+  ],
+  "status_validos": ["Concluido", "Pendente", "Em atendimento"],
+  "versao": "1.0"
+}

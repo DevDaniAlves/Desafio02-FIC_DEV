@@ -1,0 +1,38 @@
+{
+  "entrada": {
+    "diretorio_pdfs": "data/pdfs",
+    "padrao": "*.pdf"
+  },
+  "saida": {
+    "diretorio": "output",
+    "csv": "atendimentos_processados.csv",
+    "indicadores": "indicadores.json",
+    "log": "processamento.log",
+    "graficos": "output/graficos"
+  },
+  "banco": {
+    "url": "sqlite:///database/atendimentos.db"
+  },
+  "ocr": {
+    "idioma": "por",
+    "dpi": 300,
+    "min_caracteres_extracao_direta": 40
+  },
+  "embeddings": {
+    "modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "tamanho_chunk": 500,
+    "sobreposicao": 80
+  },
+  "chromadb": {
+    "diretorio": "database/chroma",
+    "colecao": "atendimentos"
+  },
+  "api": {
+    "cep_base_url": "https://viacep.com.br/ws",
+    "timeout_segundos": 8
+  },
+  "rag": {
+    "top_k": 5,
+    "modo_sem_chave": "recuperacao_local"
+  }
+}
