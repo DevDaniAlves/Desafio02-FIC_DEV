@@ -1,11 +1,23 @@
 """Modelos SQLAlchemy do domínio."""
+
 from __future__ import annotations
 from datetime import datetime, date
-from sqlalchemy import String, Text, Integer, Float, Date, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import (
+    String,
+    Text,
+    Integer,
+    Float,
+    Date,
+    DateTime,
+    ForeignKey,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 
 class Base(DeclarativeBase):
     pass
+
 
 class Documento(Base):
     __tablename__ = "documentos"
@@ -15,7 +27,10 @@ class Documento(Base):
     total_paginas: Mapped[int] = mapped_column(Integer)
     metodo: Mapped[str] = mapped_column(String(30))
     processado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    atendimentos: Mapped[list["Atendimento"]] = relationship(back_populates="documento", cascade="all, delete-orphan")
+    atendimentos: Mapped[list["Atendimento"]] = relationship(
+        back_populates="documento", cascade="all, delete-orphan"
+    )
+
 
 class Atendimento(Base):
     __tablename__ = "atendimentos"
@@ -40,7 +55,10 @@ class Atendimento(Base):
     texto_original: Mapped[str] = mapped_column(Text)
     texto_limpo: Mapped[str] = mapped_column(Text)
     documento: Mapped[Documento] = relationship(back_populates="atendimentos")
-    chunks: Mapped[list["Chunk"]] = relationship(back_populates="atendimento", cascade="all, delete-orphan")
+    chunks: Mapped[list["Chunk"]] = relationship(
+        back_populates="atendimento", cascade="all, delete-orphan"
+    )
+
 
 class Chunk(Base):
     __tablename__ = "chunks"
@@ -53,10 +71,13 @@ class Chunk(Base):
     metadata_json: Mapped[str] = mapped_column(Text)
     atendimento: Mapped[Atendimento] = relationship(back_populates="chunks")
 
+
 class ErroProcessamento(Base):
     __tablename__ = "erros_processamento"
     id: Mapped[int] = mapped_column(primary_key=True)
-    documento_id: Mapped[int | None] = mapped_column(ForeignKey("documentos.id"), nullable=True)
+    documento_id: Mapped[int | None] = mapped_column(
+        ForeignKey("documentos.id"), nullable=True
+    )
     pagina: Mapped[int | None] = mapped_column(Integer, nullable=True)
     etapa: Mapped[str] = mapped_column(String(80))
     tipo: Mapped[str] = mapped_column(String(80))

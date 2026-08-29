@@ -8,7 +8,7 @@ Esta implementação demonstra uma forma de resolver o desafio. Ela não é a ú
 - Encaminhamento de páginas sem texto para Tesseract;
 - Regex, normalização, validação e deduplicação;
 - SQLite e SQLAlchemy;
-- Limpeza textual, stopwords e lematização leve;
+- Limpeza textual com NLTK (tokenização, stopwords em português e stemming RSLP);
 - Pandas, NumPy, CSV, JSON e três gráficos;
 - Chunks com metadados rastreáveis;
 - Embeddings locais com `sentence-transformers`;
@@ -78,7 +78,7 @@ Os embeddings são locais. Sem `OPENAI_API_KEY`, o sistema recupera e apresenta 
 
 ## Limitações intencionais
 
-- A lematização leve evita exigir o download de um modelo grande; uma solução com spaCy também é válida.
+- O NLTK aplica stemming RSLP em vez de lematização plena;
 - A extração por regex foi ajustada ao formulário fornecido. Layouts diferentes exigem novos padrões.
 - O histórico Git solicitado na atividade não pode ser representado dentro de um ZIP; o professor deve demonstrá-lo em um repositório de referência ou avaliar o histórico do discente separadamente.
 
