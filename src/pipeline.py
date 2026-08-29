@@ -5,9 +5,18 @@ from pathlib import Path
 from hashlib import sha256
 import json, logging, re
 import pandas as pd
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from .config import resolve
-from .database import create_session_factory, session_scope, find_by_protocol, resolve_db_url
+from .cep_client import complement_cep
+from .database import (
+    create_session_factory,
+    session_scope,
+    find_by_protocol,
+    resolve_db_url,
+    update_atendimento,
+    update_documento,
+    purge_documento,
+)
 from .models import Documento, Atendimento, Chunk, ErroProcessamento
 from .pdf_processor import extract_pdf_pages
 from .ocr_processor import ocr_page, repair_ocr_text
@@ -56,12 +65,16 @@ def has_ocr_failure(session, doc: Documento) -> bool:
     )
 
 
-def purge_documento(session, doc: Documento) -> None:
-    session.execute(
-        delete(ErroProcessamento).where(ErroProcessamento.documento_id == doc.id)
-    )
-    session.delete(doc)
-    session.flush()
+def metodo_from_pages(page_data: list[dict]) -> str:
+    methods = {page["metodo"] for page in page_data}
+    
+    if "ocr" in methods and "extracao_direta" in methods:
+        return "misto"
+    
+    if "ocr" in methods or methods == {"ocr_pendente"}:
+        return "ocr"
+    
+    return "extracao_direta"
 
 
 def atendimento_to_row(item: Atendimento, nome_arquivo: str, metodo: str) -> dict:
@@ -77,6 +90,8 @@ def atendimento_to_row(item: Atendimento, nome_arquivo: str, metodo: str) -> dic
         "categoria": item.categoria or "",
         "status": item.status or "",
         "cep": item.cep or "",
+        "municipio": item.municipio or "",
+        "uf": item.uf or "",
         "tempo_minutos": item.tempo_minutos,
         "descricao": item.descricao or "",
         "solucao": item.solucao or "",
@@ -147,6 +162,20 @@ def ingest_pages(
                 classification = "duplicado"
                 reasons.append("protocolo_duplicado")
             status = normalized.get("status_normalizado") or fields.get("status")
+            
+            geo = (
+                complement_cep(fields.get("cep"), cfg)
+                if "cep_invalido" not in reasons
+                else {"municipio": None, "uf": None}
+            )
+            
+            municipio, uf = geo.get("municipio"), geo.get("uf")
+            
+            if "cep_invalido" not in reasons and fields.get("cep") and not municipio:
+                logging.warning(
+                    "Consulta de CEP sem município/UF (inexistente ou serviço indisponível)"
+                )
+                
             row = {
                 **fields,
                 "protocolo": protocol,
@@ -155,6 +184,8 @@ def ingest_pages(
                 "status": status,
                 "data": normalized.get("data_obj"),
                 "tempo_minutos": normalized.get("tempo_obj"),
+                "municipio": municipio or "",
+                "uf": uf or "",
                 "classificacao": classification,
                 "motivos": ";".join(reasons),
                 "documento": pdf.name,
@@ -197,6 +228,10 @@ def ingest_pages(
             )
             session.add(item)
             session.flush()
+            if municipio or uf:
+                update_atendimento(
+                    session, protocol, municipio=municipio, uf=uf
+                )
             for idx, content in enumerate(
                 split_chunks(
                     raw,
@@ -222,7 +257,7 @@ def ingest_pages(
                 )
 
 
-def process_all(cfg: dict) -> pd.DataFrame:
+def process_all(cfg: dict, recreate: bool = False) -> pd.DataFrame:
     """
     Processa todos os documentos da pasta de entrada.
 
@@ -253,7 +288,13 @@ def process_all(cfg: dict) -> pd.DataFrame:
         (root / "data" / "auxiliares" / "categorias.json").read_text(encoding="utf-8")
     )
     
-    factory = create_session_factory(resolve_db_url(root, cfg["banco"]["url"]))
+    recreate = recreate or bool(cfg.get("banco", {}).get("recriar"))
+    factory = create_session_factory(
+        resolve_db_url(root, cfg["banco"]["url"]), recreate=recreate
+    )
+    
+    if recreate:
+        logging.info("Banco SQLite recriado; schema vazio pronto para ingestão")
     pdf_dir = resolve(root, cfg["entrada"]["diretorio_pdfs"])
     rows: list[dict] = []
     with session_scope(factory) as session:
@@ -270,6 +311,14 @@ def process_all(cfg: dict) -> pd.DataFrame:
                 logging.info("Reprocessando documento com falha de OCR: %s", pdf.name)
                 purge_documento(session, existing)
                 existing = None
+            same_name = session.scalar(
+                select(Documento).where(Documento.nome_arquivo == pdf.name)
+            )
+            if same_name and (existing is None or same_name.id != existing.id):
+                logging.info(
+                    "Arquivo substituído; removendo registros anteriores: %s", pdf.name
+                )
+                purge_documento(session, same_name)
             if existing:
                 logging.info(
                     "Documento já processado; reutilizando registros: %s", pdf.name
@@ -305,6 +354,8 @@ def process_all(cfg: dict) -> pd.DataFrame:
                                 "categoria": "",
                                 "status": "",
                                 "cep": "",
+                                "municipio": "",
+                                "uf": "",
                                 "tempo_minutos": None,
                                 "descricao": "",
                                 "solucao": "",
@@ -317,21 +368,22 @@ def process_all(cfg: dict) -> pd.DataFrame:
                             }
                         )
                 continue
-            method = (
-                "ocr"
-                if all(page["metodo"] == "ocr_pendente" for page in page_data)
-                else "extracao_direta"
-            )
             doc = Documento(
                 nome_arquivo=pdf.name,
                 hash_sha256=digest,
                 total_paginas=len(page_data),
-                metodo=method,
+                metodo=metodo_from_pages(page_data),
             )
             session.add(doc)
             session.flush()
             ingest_pages(
                 session, pdf, doc, page_data, cfg, categories, rows, persist=True
+            )
+            update_documento(
+                session,
+                doc,
+                metodo=metodo_from_pages(page_data),
+                total_paginas=len(page_data),
             )
     df = pd.DataFrame(rows)
     if not df.empty:

@@ -74,7 +74,7 @@ Os embeddings são locais. Sem `OPENAI_API_KEY`, o sistema recupera e apresenta 
 - O texto original é preservado; a versão limpa serve para recuperação.
 - O chunk utiliza 500 caracteres e sobreposição de 80, configuráveis.
 - Erros de OCR são persistidos e não interrompem os outros arquivos.
-- A API de CEP foi isolada em um cliente tolerante a falhas. Sua chamada pode ser incorporada ao pipeline conforme a política de rede da turma.
+- A consulta de CEP complementa município e UF no pipeline. Falha da API ou CEP inexistente não interrompe o processamento; chaves e tokens não são registrados em log.
 
 ## Limitações intencionais
 

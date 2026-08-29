@@ -1,7 +1,7 @@
 {
   "entrada": {"diretorio_pdfs": "data/pdfs", "padrao": "*.pdf"},
   "saida": {"diretorio": "output", "csv": "atendimentos_processados.csv", "indicadores": "indicadores.json", "log": "processamento.log", "graficos": "output/graficos"},
-  "banco": {"url": "sqlite:///database/atendimentos.db"},
+  "banco": {"url": "sqlite:///database/atendimentos.db", "recriar": false},
   "ocr": {"idioma": "por", "dpi": 300, "min_caracteres_extracao_direta": 40},
   "embeddings": {"modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", "tamanho_chunk": 500, "sobreposicao": 80},
   "chromadb": {"diretorio": "database/chroma", "colecao": "atendimentos"},
