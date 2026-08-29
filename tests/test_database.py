@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.engine.url import make_url
@@ -12,6 +13,7 @@ from src.database import (
     update_documento,
 )
 from src.models import Atendimento, Chunk, Documento, ErroProcessamento
+from src.text_processor import metadata_from_chunk, metadata_json, source_metadata
 
 
 def test_sqlite_url_is_absolute_and_posix(tmp_path):
@@ -52,18 +54,47 @@ def _seed_atendimento(session, protocol: str = "AT-001") -> Atendimento:
     )
     session.add(item)
     session.flush()
-    session.add(
-        Chunk(
-            atendimento_id=item.id,
-            documento_id=doc.id,
-            pagina=1,
+    chunk = Chunk(
+        atendimento_id=item.id,
+        documento_id=doc.id,
+        pagina=1,
+        indice=0,
+        conteudo="conteudo",
+        metadata_json="{}",
+    )
+    session.add(chunk)
+    session.flush()
+    chunk.metadata_json = metadata_json(
+        **source_metadata(
+            chunk_id=chunk.id,
             indice=0,
-            conteudo="conteudo",
-            metadata_json="{}",
+            atendimento_id=item.id,
+            protocolo=protocol,
+            documento="amostra.pdf",
+            pagina=1,
+            categoria="Instalação",
         )
     )
     session.flush()
     return item
+
+
+def test_chunk_metadata_preserva_vinculo_com_a_fonte():
+    factory = create_session_factory("sqlite:///:memory:")
+    with session_scope(factory) as session:
+        item = _seed_atendimento(session)
+        chunk = session.scalars(select(Chunk)).one()
+        meta = json.loads(chunk.metadata_json)
+        indexed = metadata_from_chunk(chunk)
+        assert meta["chunk_id"] == chunk.id
+        assert meta["indice"] == 0
+        assert meta["atendimento_id"] == item.id
+        assert meta["protocolo"] == "AT-001"
+        assert meta["documento"] == "amostra.pdf"
+        assert meta["pagina"] == 1
+        assert meta["categoria"] == "Instalação"
+        assert indexed["chunk_id"] == chunk.id
+        assert indexed["protocolo"] == "AT-001"
 
 
 def test_update_consulta_e_exclusao_controlada():

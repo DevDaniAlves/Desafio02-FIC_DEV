@@ -21,7 +21,7 @@ from .models import Documento, Atendimento, Chunk, ErroProcessamento
 from .pdf_processor import extract_pdf_pages
 from .ocr_processor import ocr_page, repair_ocr_text
 from .validation import extract_fields, validate_record, clean_text
-from .text_processor import preprocess, split_chunks, metadata_json
+from .text_processor import preprocess, split_chunks, metadata_json, source_metadata
 from .analytics import export_results, generate_charts
 
 RECORD_SPLIT = re.compile(
@@ -65,15 +65,35 @@ def has_ocr_failure(session, doc: Documento) -> bool:
     )
 
 
-def metodo_from_pages(page_data: list[dict]) -> str:
-    methods = {page["metodo"] for page in page_data}
+def normalize_extraction_method(metodo: str | None) -> str:
+    """Normaliza o método da página (ocr_pendente conta como ocr)."""
+    value = (metodo or "").strip()
     
-    if "ocr" in methods and "extracao_direta" in methods:
-        return "misto"
-    
-    if "ocr" in methods or methods == {"ocr_pendente"}:
+    if value in {"ocr", "ocr_pendente"}:
         return "ocr"
     
+    if value in {"misto", "extracao_direta"}:
+        return value
+    
+    return value or "extracao_direta"
+
+
+def metodos_por_pagina(page_data: list[dict]) -> dict[int, str]:
+    return {
+        int(page["pagina"]): normalize_extraction_method(page.get("metodo"))
+        for page in page_data
+    }
+
+
+def metodo_from_pages(page_data: list[dict]) -> str:
+    methods = {normalize_extraction_method(page["metodo"]) for page in page_data}
+
+    if "ocr" in methods and "extracao_direta" in methods:
+        return "misto"
+
+    if "ocr" in methods:
+        return "ocr"
+
     return "extracao_direta"
 
 
@@ -190,12 +210,18 @@ def ingest_pages(
                 "motivos": ";".join(reasons),
                 "documento": pdf.name,
                 "pagina": page["pagina"],
-                "metodo": page["metodo"],
+                "metodo": normalize_extraction_method(page["metodo"]),
             }
             rows.append(row)
             if not persist:
                 continue
             if classification == "duplicado":
+                logging.warning(
+                    "Protocolo duplicado ignorado na persistência: %s (%s p.%s)",
+                    protocol,
+                    pdf.name,
+                    page["pagina"],
+                )
                 session.add(
                     ErroProcessamento(
                         documento_id=doc.id,
@@ -232,6 +258,7 @@ def ingest_pages(
                 update_atendimento(
                     session, protocol, municipio=municipio, uf=uf
                 )
+            pending_chunks: list[Chunk] = []
             for idx, content in enumerate(
                 split_chunks(
                     raw,
@@ -239,20 +266,28 @@ def ingest_pages(
                     cfg["embeddings"]["sobreposicao"],
                 )
             ):
-                meta = {
-                    "protocolo": protocol,
-                    "documento": pdf.name,
-                    "pagina": page["pagina"],
-                    "categoria": row["categoria"] or "",
-                }
-                session.add(
+                pending_chunks.append(
                     Chunk(
                         atendimento_id=item.id,
                         documento_id=doc.id,
                         pagina=page["pagina"],
                         indice=idx,
                         conteudo=content,
-                        metadata_json=metadata_json(**meta),
+                        metadata_json="{}",
+                    )
+                )
+            session.add_all(pending_chunks)
+            session.flush()
+            for chunk in pending_chunks:
+                chunk.metadata_json = metadata_json(
+                    **source_metadata(
+                        chunk_id=chunk.id,
+                        indice=chunk.indice,
+                        atendimento_id=item.id,
+                        protocolo=protocol,
+                        documento=pdf.name,
+                        pagina=page["pagina"],
+                        categoria=row["categoria"] or "",
                     )
                 )
 
@@ -267,8 +302,8 @@ def process_all(cfg: dict, recreate: bool = False) -> pd.DataFrame:
     4. Carrega as categorias.
     5. Cria a sessão do banco de dados.
     6. Processa cada documento da pasta de entrada.
-    7. Exporta os resultados.
-    8. Gera os gráficos.
+    7. Exporta CSV, indicadores JSON e problemas no log (mesmo sem registros).
+    8. Gera os cinco gráficos PNG (categoria, tempo médio, status, município e método).
 
     Args:
         cfg (dict): Configuração do sistema.
@@ -323,8 +358,13 @@ def process_all(cfg: dict, recreate: bool = False) -> pd.DataFrame:
                 logging.info(
                     "Documento já processado; reutilizando registros: %s", pdf.name
                 )
+                metodos = metodos_por_pagina(page_data)
                 rows.extend(
-                    atendimento_to_row(item, pdf.name, existing.metodo)
+                    atendimento_to_row(
+                        item,
+                        pdf.name,
+                        metodos.get(item.pagina, existing.metodo),
+                    )
                     for item in existing.atendimentos
                 )
                 if not existing.atendimentos:
@@ -364,7 +404,7 @@ def process_all(cfg: dict, recreate: bool = False) -> pd.DataFrame:
                                 "motivos": "protocolo_duplicado",
                                 "documento": pdf.name,
                                 "pagina": err.pagina,
-                                "metodo": existing.metodo,
+                                "metodo": metodos.get(err.pagina, existing.metodo),
                             }
                         )
                 continue
@@ -386,7 +426,6 @@ def process_all(cfg: dict, recreate: bool = False) -> pd.DataFrame:
                 total_paginas=len(page_data),
             )
     df = pd.DataFrame(rows)
-    if not df.empty:
-        export_results(df, output, cfg["saida"]["csv"], cfg["saida"]["indicadores"])
-        generate_charts(df, resolve(root, cfg["saida"]["graficos"]))
+    export_results(df, output, cfg["saida"]["csv"], cfg["saida"]["indicadores"])
+    generate_charts(df, resolve(root, cfg["saida"]["graficos"]))
     return df

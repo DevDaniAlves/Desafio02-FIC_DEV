@@ -13,6 +13,16 @@ Decisões de limpeza:
 - Pontuação isolada é descartada; números e identificadores alfanuméricos ficam.
 - Os chunks usados em embeddings continuam no texto bruto (apenas espaços),
   para não degradar o modelo semântico.
+
+Chunking (janela deslizante por caracteres):
+- Tamanho padrão 500: cabe na janela do MiniLM multilingual (~128 tokens) e
+  evita truncar o embedding.
+- Sobreposição padrão 80 (~16%): o final de um trecho reaparece no início do
+  seguinte para não perder o contexto na fronteira.
+- Se o limite cair no meio de uma palavra, o corte recua ao último espaço
+  dentro da janela (palavras maiores que o tamanho ainda são cortadas).
+- O avanço nunca recua: se a sobreposição não progredir, o próximo início é
+  o fim do trecho atual.
 """
 
 from __future__ import annotations
@@ -74,6 +84,12 @@ def preprocess(text: str) -> str:
 
 
 def split_chunks(text: str, size: int = 500, overlap: int = 80) -> list[str]:
+    """Divide o texto em janelas de `size` caracteres com sobreposição.
+
+    A unidade é o caractere, não o token, para caber no MiniLM. A sobreposição
+    replica o sufixo de um trecho no prefixo do próximo. O corte prefere o
+    último espaço dentro da janela, para não partir palavras.
+    """
     text = normalize_text(text)
 
     if size <= 0 or overlap < 0 or overlap >= size:
@@ -86,14 +102,53 @@ def split_chunks(text: str, size: int = 500, overlap: int = 80) -> list[str]:
         end = min(len(text), start + size)
         if end < len(text):
             boundary = text.rfind(" ", start, end)
-            if boundary > start + size // 2:
+            if boundary > start:
                 end = boundary
         chunks.append(text[start:end].strip())
         if end >= len(text):
             break
-        start = end - overlap
+        next_start = end - overlap
+        start = end if next_start <= start else next_start
 
     return [chunk for chunk in chunks if chunk]
+
+
+def source_metadata(
+    *,
+    chunk_id: int,
+    indice: int,
+    atendimento_id: int,
+    protocolo: str,
+    documento: str,
+    pagina: int,
+    categoria: str = "",
+) -> dict:
+    """Metadados de proveniência persistidos no SQLite e copiados ao ChromaDB."""
+    return {
+        "chunk_id": int(chunk_id),
+        "indice": int(indice),
+        "atendimento_id": int(atendimento_id),
+        "protocolo": protocolo or "",
+        "documento": documento or "",
+        "pagina": int(pagina),
+        "categoria": categoria or "",
+    }
+
+
+def metadata_from_chunk(chunk, stored: dict | None = None) -> dict:
+    """Completa o JSON gravado com id, índice e FKs do registro relacional."""
+    payload = dict(stored or {})
+    if not payload and getattr(chunk, "metadata_json", None):
+        payload = json.loads(chunk.metadata_json or "{}")
+    return source_metadata(
+        chunk_id=chunk.id,
+        indice=chunk.indice,
+        atendimento_id=chunk.atendimento_id,
+        protocolo=payload.get("protocolo") or "",
+        documento=payload.get("documento") or "",
+        pagina=chunk.pagina,
+        categoria=payload.get("categoria") or "",
+    )
 
 
 def metadata_json(**kwargs) -> str:

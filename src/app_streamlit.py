@@ -11,5 +11,10 @@ if st.button("Consultar",type="primary",disabled=not question.strip()):
         response=requests.post("http://127.0.0.1:8000/ask",json={"pergunta":question,"top_k":top_k},timeout=60); response.raise_for_status(); data=response.json()
         st.subheader("Resposta"); st.write(data["resposta"]); st.caption(f"Modo: {data.get('modo')}")
         st.subheader("Fontes")
-        for source in data.get("fontes",[]): st.markdown(f"**{source.get('protocolo')}** - {source.get('documento')}, página {source.get('pagina')} - similaridade {source.get('similaridade')}")
+        for source in data.get("fontes",[]):
+            st.markdown(
+                f"**{source.get('protocolo')}** — {source.get('documento')}, "
+                f"página {source.get('pagina')}, trecho {source.get('indice')} "
+                f"(id {source.get('chunk_id')}) — similaridade {source.get('similaridade')}"
+            )
     except requests.RequestException as exc: st.error(f"Não foi possível consultar a API: {exc}")

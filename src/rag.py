@@ -14,7 +14,10 @@ def answer(question:str,sources:list[dict],model:str="gpt-4.1-mini") -> dict:
         from langchain_core.prompts import ChatPromptTemplate
         prompt=ChatPromptTemplate.from_messages([("system",SYSTEM),("human","Pergunta: {question}\n\nContexto:\n{context}")])
         chain=prompt|ChatOpenAI(model=model,temperature=0)
-        context="\n\n".join(f"[Fonte {s.get('protocolo')} p.{s.get('pagina')}] {s.get('conteudo')}" for s in sources)
+        context="\n\n".join(
+            f"[Fonte {s.get('protocolo')} p.{s.get('pagina')} chunk {s.get('chunk_id')} #{s.get('indice')}] {s.get('conteudo')}"
+            for s in sources
+        )
         response=chain.invoke({"question":question,"context":context})
         return {"resposta":response.content,"modo":"rag","fontes":sources}
     except Exception as exc:
