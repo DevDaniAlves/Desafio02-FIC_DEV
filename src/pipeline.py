@@ -7,7 +7,7 @@ import json, logging, re
 import pandas as pd
 from sqlalchemy import select, delete
 from .config import resolve
-from .database import create_session_factory, session_scope, find_by_protocol
+from .database import create_session_factory, session_scope, find_by_protocol, resolve_db_url
 from .models import Documento, Atendimento, Chunk, ErroProcessamento
 from .pdf_processor import extract_pdf_pages
 from .ocr_processor import ocr_page, repair_ocr_text
@@ -40,14 +40,6 @@ def split_records(page_text: str) -> list[str]:
             r"Protocol[oa]?b?\s+(?:AT\s*-?\s*\d{3}|PROTOCOLO\s*\??)", part, re.I
         )
     ]
-
-
-def resolve_db_url(root: Path, db_url: str) -> str:
-    if db_url.startswith("sqlite:/// "):
-        return "sqlite:///" + str(root / db_url.removeprefix("sqlite:/// "))
-    if db_url.startswith("sqlite:///") and not db_url.startswith("sqlite:////"):
-        return "sqlite:///" + str(root / db_url[10:])
-    return db_url
 
 
 def has_ocr_failure(session, doc: Documento) -> bool:
