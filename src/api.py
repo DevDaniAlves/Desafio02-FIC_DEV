@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import os
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from .config import load_config
 from .indexer import semantic_query
-from .rag import answer
+from .rag import answer, resolve_provider
 
 app = FastAPI(title="Atendimentos FIC_DEV", version="1.0.0")
 cfg = load_config()
@@ -22,7 +20,8 @@ class AskRequest(BaseModel):
 
 
 def _modo() -> str:
-    return "rag" if os.getenv("OPENAI_API_KEY") else "recuperacao_local"
+    provider = resolve_provider()
+    return f"rag_{provider}" if provider else "recuperacao_local"
 
 
 @app.get("/")
@@ -31,12 +30,13 @@ def root():
         "servico": "Consulta de atendimentos",
         "endpoints": {"health": "/health", "ask": "POST /ask"},
         "modo": _modo(),
+        "provedor": resolve_provider(),
     }
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "modo": _modo()}
+    return {"status": "ok", "modo": _modo(), "provedor": resolve_provider()}
 
 
 @app.post("/ask")
@@ -50,6 +50,4 @@ def ask(payload: AskRequest):
             status_code=503,
             detail=f"Consulta indisponível: {type(exc).__name__}",
         ) from exc
-    return answer(
-        payload.pergunta, sources, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-    )
+    return answer(payload.pergunta, sources)

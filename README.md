@@ -68,9 +68,9 @@ Testes:
 pytest
 ```
 
-## Modo sem chave da OpenAI
+## Modo sem chave de modelo
 
-Os embeddings são locais (`sentence-transformers`, MiniLM multilingual). Sem `OPENAI_API_KEY`, o sistema recupera e apresenta os chunks mais semelhantes com suas fontes. Com a chave configurada, LangChain e o modelo definido em `OPENAI_MODEL` produzem uma síntese fundamentada no contexto. Se o índice estiver vazio ou a busca não devolver trechos, a resposta informa que não há informação suficiente e o modelo não é chamado.
+Os embeddings são locais (`sentence-transformers`, MiniLM multilingual). Sem `OPENAI_API_KEY` e sem `GEMINI_API_KEY`, o sistema recupera e apresenta os chunks mais semelhantes com suas fontes. Com uma das chaves, LangChain gera a síntese (`OPENAI_MODEL` ou `GEMINI_MODEL`). Se as duas estiverem preenchidas, `AI_PROVIDER` escolhe `openai` ou `gemini`. Se o índice estiver vazio ou a busca não devolver trechos, a resposta informa que não há informação suficiente e o modelo não é chamado.
 
 ## Saídas geradas pelo pipeline
 

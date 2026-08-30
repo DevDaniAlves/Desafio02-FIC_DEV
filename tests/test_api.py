@@ -12,7 +12,11 @@ def test_health():
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["modo"] in {"rag", "recuperacao_local"}
+    assert body["modo"] in {
+        "rag_openai",
+        "rag_gemini",
+        "recuperacao_local",
+    }
 
 
 def test_root_lists_endpoints():
@@ -29,6 +33,7 @@ def test_ask_validation():
 @patch("src.api.semantic_query")
 def test_ask_returns_local_payload(mock_query, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     mock_query.return_value = [
         {
             "protocolo": "AT-001",
@@ -62,6 +67,7 @@ def test_ask_returns_local_payload(mock_query, monkeypatch):
 @patch("src.api.semantic_query")
 def test_ask_empty_index_is_ok(mock_query, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     mock_query.return_value = []
     response = client.post("/ask", json={"pergunta": "Quais erros de Python?"})
     assert response.status_code == 200
