@@ -62,6 +62,10 @@ A API expõe `GET /health`, `GET /` e `POST /ask` (`pergunta`, `top_k`, `categor
 
 O Streamlit consulta essa API: mostra se ela está no ar, filtra por categoria oficial e lista cada fonte como protocolo (`AT-XXX`), documento, página e trecho. Sem fontes, pede para processar e indexar os PDFs.
 
+Há 3 consultas grátis por IP, sem cadastro. Depois é preciso e-mail e senha (e-mail único) e um plano ilustrativo: 7/dia (R$ 49), 15/dia (R$ 99) ou ilimitado (R$ 199). Cartão valida 16 dígitos, validade futura e CVV; PIX mostra um QR estático e o botão “Já paguei”. Não há cobrança real.
+
+A justificativa dos dois modos de consulta e dos planos está em [docs/consultas-e-planos.md](docs/consultas-e-planos.md). O material de apresentação (correções do entregue + diferenciais) está em [pitch/](pitch/).
+
 Antes de buscar, o modelo classifica a pergunta: `ktop` usa só os `top_k` trechos mais semelhantes; `completo` (frequência, totais) conta a base inteira no SQLite pelo campo Problema e na tela lista só o top-k.
 
 Testes:

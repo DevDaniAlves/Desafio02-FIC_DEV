@@ -28,7 +28,7 @@ def test_health_down(_mock_get):
 def test_ask_api_sends_category(mock_post):
     mock_post.return_value.raise_for_status.return_value = None
     mock_post.return_value.json.return_value = {"resposta": "ok", "fontes": []}
-    ask_api("http://127.0.0.1:8000", "erro no pip", 3, "Python e bibliotecas")
+    ask_api("http://127.0.0.1:8000", "erro no pip", 3, "Python e bibliotecas", None)
     _args, kwargs = mock_post.call_args
     assert kwargs["json"] == {
         "pergunta": "erro no pip",

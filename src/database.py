@@ -6,7 +6,8 @@ from pathlib import Path
 from sqlalchemy import create_engine, delete, select
 from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.orm import sessionmaker, Session
-from .models import Atendimento, Base, Documento, ErroProcessamento
+from .models import Atendimento, Base, Documento, ErroProcessamento  # noqa: F401
+from .models import Assinatura, Sessao, UsoConsulta, Usuario  # noqa: F401
 
 _ATENDIMENTO_UPDATABLE = frozenset(
     {

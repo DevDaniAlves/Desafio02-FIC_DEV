@@ -25,10 +25,13 @@ PROBLEMA_RE = re.compile(r"Problema\s+(.+?)\s+Solucao", re.I | re.S)
 CLASSIFY = (
     "Classifique a pergunta do arquivo de atendimentos em UMA palavra: "
     "ktop ou completo.\n"
-    "ktop = busca por semelhança, casos parecidos, detalhe de um protocolo, "
-    "o que aconteceu com alguém.\n"
-    "completo = precisa contar, listar todos, frequência, os que mais aparecem, "
-    "validar, totais ou cruzar a base inteira.\n"
+    "completo SOMENTE se pedir frequência, os que mais aparecem, os mais comuns, "
+    "quantos, totais, listar todos ou validar a base inteira.\n"
+    "ktop para todo o resto: semelhança, um protocolo, o que aconteceu, "
+    "pior caso, mais demorado, mais lento, extremo de um recorte.\n"
+    "Exemplos: 'quais problemas mais aparecem?' -> completo. "
+    "'Qual o problema mais demorado de se resolver?' -> ktop. "
+    "'Qual o pior caso de senha?' -> ktop.\n"
     "Responda somente: ktop ou completo"
 )
 

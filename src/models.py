@@ -83,3 +83,38 @@ class ErroProcessamento(Base):
     tipo: Mapped[str] = mapped_column(String(80))
     mensagem: Mapped[str] = mapped_column(Text)
     registrado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(180), unique=True)
+    senha_hash: Mapped[str] = mapped_column(String(200))
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Sessao(Base):
+    __tablename__ = "sessoes"
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Assinatura(Base):
+    __tablename__ = "assinaturas"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    plano: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20), default="pendente")
+    metodo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class UsoConsulta(Base):
+    __tablename__ = "usos_consulta"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ip: Mapped[str] = mapped_column(String(80))
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
