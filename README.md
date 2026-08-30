@@ -66,7 +66,7 @@ pytest
 
 ## Modo sem chave da OpenAI
 
-Os embeddings são locais. Sem `OPENAI_API_KEY`, o sistema recupera e apresenta os chunks mais semelhantes com suas fontes. Com a chave configurada, LangChain e o modelo definido em `OPENAI_MODEL` produzem uma síntese fundamentada no contexto.
+Os embeddings são locais (`sentence-transformers`, MiniLM multilingual). Sem `OPENAI_API_KEY`, o sistema recupera e apresenta os chunks mais semelhantes com suas fontes. Com a chave configurada, LangChain e o modelo definido em `OPENAI_MODEL` produzem uma síntese fundamentada no contexto. Se o índice estiver vazio ou a busca não devolver trechos, a resposta informa que não há informação suficiente e o modelo não é chamado.
 
 ## Saídas geradas pelo pipeline
 

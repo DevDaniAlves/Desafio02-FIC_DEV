@@ -1,4 +1,4 @@
-"""Indexação dos chunks persistidos no ChromaDB."""
+"""Indexação e recuperação semântica dos chunks no ChromaDB (RF13)."""
 
 from __future__ import annotations
 from pathlib import Path

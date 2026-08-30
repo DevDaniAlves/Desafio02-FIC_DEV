@@ -1,4 +1,4 @@
-"""Persistência e consulta dos chunks no ChromaDB."""
+"""Persistência e consulta dos chunks no ChromaDB (RF12)."""
 from __future__ import annotations
 from pathlib import Path
 
