@@ -60,6 +60,8 @@ streamlit run src/app_streamlit.py
 
 A API expõe `GET /health`, `GET /` e `POST /ask` (`pergunta`, `top_k`, `categoria` opcional). Índice vazio devolve HTTP 200 com `modo=sem_fontes`. Falha ao abrir o Chroma ou o modelo de embedding devolve HTTP 503.
 
+O Streamlit consulta essa API: mostra se ela está no ar, filtra por categoria oficial e lista cada fonte como protocolo (`AT-XXX`), documento, página e trecho. Sem fontes, pede para processar e indexar os PDFs.
+
 Testes:
 
 ```bash

@@ -1,20 +1,113 @@
-"""Interface Streamlit mínima."""
-import requests
-import streamlit as st
+"""Interface Streamlit de consulta ao arquivo de atendimentos (RF16)."""
 
-st.set_page_config(page_title="Consulta de atendimentos",page_icon="🔎")
-st.title("Consulta inteligente de atendimentos")
-question=st.text_area("Pergunta",placeholder="Quais problemas de instalação do Python aparecem com maior frequência?")
-top_k=st.slider("Quantidade de fontes",1,10,5)
-if st.button("Consultar",type="primary",disabled=not question.strip()):
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import requests
+
+ROOT = Path(__file__).resolve().parents[1]
+CATEGORIES_PATH = ROOT / "data" / "auxiliares" / "categorias.json"
+DEFAULT_API = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+ALL_CATEGORIES = "(todas)"
+
+
+def load_categories() -> list[str]:
+    if not CATEGORIES_PATH.exists():
+        return []
+    data = json.loads(CATEGORIES_PATH.read_text(encoding="utf-8"))
+    return [item["nome"] for item in data.get("categorias_oficiais", [])]
+
+
+def check_health(base_url: str) -> dict | None:
     try:
-        response=requests.post("http://127.0.0.1:8000/ask",json={"pergunta":question,"top_k":top_k},timeout=60); response.raise_for_status(); data=response.json()
-        st.subheader("Resposta"); st.write(data["resposta"]); st.caption(f"Modo: {data.get('modo')}")
-        st.subheader("Fontes")
-        for source in data.get("fontes",[]):
-            st.markdown(
-                f"**{source.get('protocolo')}** — {source.get('documento')}, "
-                f"página {source.get('pagina')}, trecho {source.get('indice')} "
-                f"(id {source.get('chunk_id')}) — similaridade {source.get('similaridade')}"
+        response = requests.get(f"{base_url.rstrip('/')}/health", timeout=5)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException:
+        return None
+
+
+def ask_api(base_url: str, pergunta: str, top_k: int, categoria: str | None) -> dict:
+    payload = {"pergunta": pergunta, "top_k": top_k}
+    if categoria:
+        payload["categoria"] = categoria
+    response = requests.post(
+        f"{base_url.rstrip('/')}/ask", json=payload, timeout=60
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def main() -> None:
+    import streamlit as st
+
+    st.set_page_config(page_title="Arquivo de atendimentos", page_icon="📋", layout="wide")
+    st.title("Arquivo de atendimentos")
+    st.caption(
+        "Consulta os protocolos extraídos dos PDFs. A resposta cita o AT-XXX, "
+        "o documento e a página de origem."
+    )
+
+    with st.sidebar:
+        st.header("Consulta")
+        api_url = st.text_input("API", value=DEFAULT_API)
+        health = check_health(api_url)
+        if health:
+            st.success(f"API no ar · {health.get('modo', '?')}")
+        else:
+            st.error("API indisponível. Suba com `uvicorn src.api:app`.")
+        categories = load_categories()
+        category_choice = st.selectbox("Categoria", [ALL_CATEGORIES, *categories])
+        top_k = st.slider("Fontes", 1, 10, 5)
+        st.caption("Cada fonte é um trecho de um protocolo persistido no Chroma.")
+
+    question = st.text_area(
+        "Pergunta sobre os atendimentos",
+        placeholder="Quais problemas de instalação do Python aparecem com maior frequência?",
+        height=120,
+    )
+    consultar = st.button(
+        "Consultar arquivo", type="primary", disabled=not question.strip()
+    )
+
+    if not consultar:
+        return
+
+    categoria = None if category_choice == ALL_CATEGORIES else category_choice
+    try:
+        data = ask_api(api_url, question.strip(), top_k, categoria)
+    except requests.RequestException as exc:
+        st.error(f"Não foi possível consultar a API: {exc}")
+        return
+
+    st.subheader("Resposta")
+    st.write(data.get("resposta", ""))
+    st.caption(f"Modo: {data.get('modo', '?')}")
+    if data.get("aviso"):
+        st.warning(data["aviso"])
+    fontes = data.get("fontes") or []
+    st.subheader(f"Protocolos recuperados ({len(fontes)})")
+    if not fontes:
+        st.info("Nenhum trecho sustentou a pergunta. Processe e indexe os PDFs.")
+        return
+    for source in fontes:
+        protocolo = source.get("protocolo") or "sem protocolo"
+        similaridade = source.get("similaridade")
+        score = (
+            f"{similaridade:.2f}" if isinstance(similaridade, (int, float)) else "—"
+        )
+        with st.container(border=True):
+            st.markdown(f"**{protocolo}** · similaridade {score}")
+            st.caption(
+                f"{source.get('documento')} · página {source.get('pagina')} · "
+                f"trecho {source.get('indice')} · id {source.get('chunk_id')}"
             )
-    except requests.RequestException as exc: st.error(f"Não foi possível consultar a API: {exc}")
+            if source.get("conteudo"):
+                st.write(source["conteudo"])
+
+
+if __name__ == "__main__" or not os.getenv("PYTEST_CURRENT_TEST"):
+    main()
