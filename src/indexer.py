@@ -3,8 +3,8 @@
 from __future__ import annotations
 from pathlib import Path
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-from .models import Chunk
+from sqlalchemy.orm import Session, selectinload
+from .models import Atendimento, Chunk
 from .embeddings import EmbeddingService
 from .vector_store import ChromaStore
 from .database import resolve_db_url
@@ -61,3 +61,28 @@ def semantic_query(
     store = _store(cfg)
     where = {"categoria": category} if category else None
     return [_row_from_match(row) for row in store.query(query, top_k, where)]
+
+
+def all_atendimentos(cfg: dict, category: str | None = None) -> list[dict]:
+    """Base inteira do SQLite: um registro por protocolo, sem recorte top-k."""
+    root = Path(cfg["_root"])
+    url = resolve_db_url(root, cfg["banco"]["url"])
+    with Session(create_engine(url)) as session:
+        stmt = select(Atendimento).options(selectinload(Atendimento.documento))
+        if category:
+            stmt = stmt.where(Atendimento.categoria == category)
+        items = list(session.scalars(stmt).all())
+    return [
+        {
+            "protocolo": item.protocolo,
+            "documento": item.documento.nome_arquivo if item.documento else "",
+            "pagina": item.pagina,
+            "indice": 0,
+            "chunk_id": item.id,
+            "conteudo": item.texto_original,
+            "descricao": item.descricao or "",
+            "similaridade": 1.0,
+            "categoria": item.categoria or "",
+        }
+        for item in items
+    ]

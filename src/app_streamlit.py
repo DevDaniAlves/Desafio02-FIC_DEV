@@ -85,11 +85,26 @@ def main() -> None:
 
     st.subheader("Resposta")
     st.write(data.get("resposta", ""))
-    st.caption(f"Modo: {data.get('modo', '?')}")
-    if data.get("aviso"):
-        st.warning(data["aviso"])
+    escopo = data.get("escopo") or "ktop"
     fontes = data.get("fontes") or []
-    st.subheader(f"Protocolos recuperados ({len(fontes)})")
+    if escopo == "completo":
+        st.info(
+            data.get("aviso")
+            or "O sistema enviou a base completa para a contagem."
+        )
+        st.caption(
+            f"Modo: {data.get('modo', '?')} · escopo: completo · "
+            f"{data.get('total_base', '?')} na contagem · "
+            f"{len(fontes)} no top-k"
+        )
+    else:
+        st.caption(
+            f"Modo: {data.get('modo', '?')} · escopo: ktop · "
+            f"{len(fontes)} fonte(s)"
+        )
+        if data.get("aviso"):
+            st.warning(data["aviso"])
+    st.subheader(f"Protocolos mais semelhantes — top-k ({len(fontes)})")
     if not fontes:
         st.info("Nenhum trecho sustentou a pergunta. Processe e indexe os PDFs.")
         return

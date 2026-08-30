@@ -6,8 +6,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from .config import load_config
-from .indexer import semantic_query
-from .rag import answer, resolve_provider
+from .indexer import all_atendimentos, semantic_query
+from .rag import answer, classify_query, resolve_provider
 
 app = FastAPI(title="Atendimentos FIC_DEV", version="1.0.0")
 cfg = load_config()
@@ -41,13 +41,29 @@ def health():
 
 @app.post("/ask")
 def ask(payload: AskRequest):
+    escopo = classify_query(payload.pergunta)
     try:
-        sources = semantic_query(
+        preview = semantic_query(
             cfg, payload.pergunta, payload.top_k, payload.categoria
         )
+        if escopo == "completo":
+            sources = all_atendimentos(cfg, payload.categoria)
+        else:
+            sources = preview
     except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail=f"Consulta indisponível: {type(exc).__name__}",
         ) from exc
-    return answer(payload.pergunta, sources)
+    result = answer(payload.pergunta, sources, escopo=escopo)
+    result["escopo"] = escopo
+    result["fontes"] = preview
+    if escopo == "completo":
+        result["total_base"] = len(sources)
+        result["aviso"] = (
+            f"O sistema enviou todos os {len(sources)} atendimentos para a "
+            "contagem porque a pergunta é quantitativa; assim a resposta "
+            "fica mais precisa. A lista abaixo mostra só os "
+            f"{len(preview)} mais semelhantes (top-k)."
+        )
+    return result

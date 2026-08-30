@@ -62,6 +62,8 @@ A API expõe `GET /health`, `GET /` e `POST /ask` (`pergunta`, `top_k`, `categor
 
 O Streamlit consulta essa API: mostra se ela está no ar, filtra por categoria oficial e lista cada fonte como protocolo (`AT-XXX`), documento, página e trecho. Sem fontes, pede para processar e indexar os PDFs.
 
+Antes de buscar, o modelo classifica a pergunta: `ktop` usa só os `top_k` trechos mais semelhantes; `completo` (frequência, totais) conta a base inteira no SQLite pelo campo Problema e na tela lista só o top-k.
+
 Testes:
 
 ```bash

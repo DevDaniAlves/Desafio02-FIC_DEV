@@ -4,7 +4,10 @@ from src.rag import (
     _context_from_sources,
     _message_text,
     answer,
+    count_problems,
+    format_frequency_answer,
     local_answer,
+    parse_scope,
     resolve_provider,
 )
 
@@ -73,6 +76,53 @@ def test_provider_both_follow_ai_provider(monkeypatch):
     assert resolve_provider() == "gemini"
     monkeypatch.setenv("AI_PROVIDER", "openai")
     assert resolve_provider() == "openai"
+
+
+def test_count_problems_orders_by_frequency():
+    ranked = count_problems(
+        [
+            {"protocolo": "AT-001", "descricao": "pip nao e reconhecido no terminal."},
+            {"protocolo": "AT-002", "descricao": "Ambiente virtual nao ativa no terminal."},
+            {"protocolo": "AT-003", "descricao": "pip nao e reconhecido no terminal."},
+        ]
+    )
+    assert ranked[0]["problema"] == "pip nao e reconhecido no terminal."
+    assert ranked[0]["quantidade"] == 2
+    assert ranked[0]["protocolos"] == ["AT-001", "AT-003"]
+    assert ranked[1]["quantidade"] == 1
+    text = format_frequency_answer(ranked, 3)
+    assert "pip nao e reconhecido no terminal. — 2" in text
+    assert "AT-001, AT-003" in text
+
+
+def test_answer_completo_does_not_call_model(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-test")
+    result = answer(
+        "Quais mais aparecem?",
+        [
+            {"protocolo": "AT-001", "descricao": "pip nao e reconhecido no terminal."},
+            {"protocolo": "AT-002", "descricao": "pip nao e reconhecido no terminal."},
+        ],
+        escopo="completo",
+    )
+    assert result["modo"] == "contagem"
+    assert "— 2" in result["resposta"]
+
+
+def test_parse_scope_completo_and_ktop():
+    assert parse_scope("completo") == "completo"
+    assert parse_scope("completo.") == "completo"
+    assert parse_scope("ktop") == "ktop"
+    assert parse_scope("ktop\nporque é semelhança") == "ktop"
+    assert parse_scope("") == "ktop"
+
+
+def test_context_completo_header():
+    text = _context_from_sources(
+        [{"protocolo": "AT-001", "documento": "a.pdf", "pagina": 1, "indice": 0, "conteudo": "x"}],
+        escopo="completo",
+    )
+    assert "base completa" in text
 
 
 def test_context_includes_protocol_and_problem():
