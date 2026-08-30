@@ -128,3 +128,12 @@ A divisão usa janela deslizante por **caracteres** (não por tokens), configur�
 - O pagamento dos planos é ilustrativo.
 
 Justificativa dos modos e dos planos: [docs/consultas-e-planos.md](docs/consultas-e-planos.md). Material de apresentação: [pitch/](pitch/).
+
+## Uso de IA
+
+Assistentes (Cursor e Gemini) apoiaram o trabalho. A decisão do que entra no repositório continua nossa.
+
+- **RF11–RF16:** validar embeddings, Chroma, RAG, FastAPI e Streamlit em relação ao enunciado, e dar suporte pontual no desenvolvimento (dúvidas, testes, mensagens de erro).
+- **Demais:** qualidade do código, ambiente de execução, textos do pitch e deste README.
+
+A síntese das perguntas no produto (LangChain + Gemini ou OpenAI) é outra camada, descrita em “Modo sem chave de modelo”.
