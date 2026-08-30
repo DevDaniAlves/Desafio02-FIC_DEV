@@ -58,6 +58,8 @@ uvicorn src.api:app --reload
 streamlit run src/app_streamlit.py
 ```
 
+A API expõe `GET /health`, `GET /` e `POST /ask` (`pergunta`, `top_k`, `categoria` opcional). Índice vazio devolve HTTP 200 com `modo=sem_fontes`. Falha ao abrir o Chroma ou o modelo de embedding devolve HTTP 503.
+
 Testes:
 
 ```bash
