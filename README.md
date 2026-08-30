@@ -1,6 +1,8 @@
-# Solução de referência - desafio final Python para IA
+# Arquivo de atendimentos
 
-Esta implementação demonstra uma forma de resolver o desafio. Ela não é a única solução correta e não deve ser fornecida aos discentes antes da conclusão da atividade.
+Desafio 02 do FIC DEV (Python para IA). O sistema lê fichas em PDF, valida, grava no SQLite, indexa no Chroma e responde perguntas pela API e pelo Streamlit.
+
+Há dois modos: `ktop` (caso ou semelhança, só o top-k) e `completo` (frequência e totais na base, pelo campo Problema). Três consultas grátis por IP; depois, login e planos ilustrativos — sem cobrança real.
 
 ## Funcionalidades
 
@@ -20,10 +22,12 @@ Esta implementação demonstra uma forma de resolver o desafio. Ela não é a ú
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-cp .env.example .env
+cp .env.example .env               # Windows: copy .env.example .env
 ```
+
+No Windows, use sempre o Python do `.venv` (`.\.venv\Scripts\python.exe -m …`). O `python` global não tem Streamlit nem Chroma.
 
 No Ubuntu, instale também Poppler e Tesseract:
 
@@ -54,9 +58,11 @@ python -m src.main --pergunta "Quais problemas mencionam instalação do Python?
 API e interface:
 
 ```bash
-uvicorn src.api:app --reload
-streamlit run src/app_streamlit.py
+python -m uvicorn src.api:app --reload
+python -m streamlit run src/app_streamlit.py
 ```
+
+A tela é o Streamlit em `http://127.0.0.1:8501`. A porta `8000` é a API (JSON). Teste o `POST /ask` em `http://127.0.0.1:8000/docs`.
 
 A API expõe `GET /health`, `GET /` e `POST /ask` (`pergunta`, `top_k`, `categoria` opcional). Índice vazio devolve HTTP 200 com `modo=sem_fontes`. Falha ao abrir o Chroma ou o modelo de embedding devolve HTTP 503.
 
@@ -92,7 +98,7 @@ Após `python -m src.main`, o diretório `output/` contém:
   - `atendimentos_municipio.png` — quantidade por município (registros válidos);
   - `atendimentos_metodo.png` — quantidade por método de extração (base completa).
 
-## Decisões de referência
+## Decisões
 
 - Registros repetidos pelo protocolo são classificados como duplicados e não são reinseridos.
 - O texto original é preservado; a versão limpa serve para recuperação.
@@ -114,12 +120,11 @@ A divisão usa janela deslizante por **caracteres** (não por tokens), configur�
 - Cada chunk recebe um identificador único (chave primária), um índice dentro do atendimento e metadados com documento, página, protocolo e categoria. Esses campos vão para o SQLite e para o ChromaDB; a consulta devolve o id do trecho junto da fonte.
 - A indexação espelha o banco relacional e remove ids órfãos da coleção vetorial.
 
-## Limitações intencionais
+## Limitações
 
-- O NLTK aplica stemming RSLP em vez de lematização plena;
-- A extração por regex foi ajustada ao formulário fornecido. Layouts diferentes exigem novos padrões.
-- O histórico Git solicitado na atividade não pode ser representado dentro de um ZIP; o professor deve demonstrá-lo em um repositório de referência ou avaliar o histórico do discente separadamente.
+- O NLTK aplica stemming RSLP, não lematização plena.
+- A extração por regex vale para o formulário deste desafio; outro layout pede outros padrões.
+- OCR de PDF digitalizado no Windows exige Tesseract no PATH (ou `TESSERACT_CMD`).
+- O pagamento dos planos é ilustrativo.
 
-## Uso de IA nesta referência
-
-A solução foi estruturada como material pedagógico e deve ser revisada pelo professor antes da aplicação. O discente continua responsável por explicar e modificar o próprio código durante a verificação de aprendizagem.
+Justificativa dos modos e dos planos: [docs/consultas-e-planos.md](docs/consultas-e-planos.md). Material de apresentação: [pitch/](pitch/).
